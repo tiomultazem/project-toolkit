@@ -287,7 +287,7 @@ Contoh:
 project-toolkit/
 |-- pyproject.toml
 |-- README.md
-`-- pt/
+|-- pt/
     |-- __init__.py
     |-- cli.py
     |-- commands.py
