@@ -5,6 +5,7 @@ from .crypto import decrypt, encrypt
 from .gittools import run_git_commit
 from .minifier import REV_MARKER, make_loader, minify_source
 from .paths import demob_path, mob_path, read_source
+from .versioning import write_version
 
 
 def show_help() -> int:  # tampilkan bantuan command untuk user
@@ -18,8 +19,9 @@ def show_help() -> int:  # tampilkan bantuan command untuk user
     print("| 3. pt enkrip  -> enkripsi kumpulan file/folder             |")
     print("| 4. pt dekrip  -> dekripsi kumpulan file/folder             |")
     print("| 5. pt commit  -> git add, commit, push main                |")
+    print("| 6. pt versi   -> tulis versi dan changelog                 |")
     print("+------------------------------------------------------------+")
-    print("Ketik: pt [1-5] untuk detail command. Contoh: pt 5")
+    print("Ketik: pt [1-6] untuk detail command. Contoh: pt 6")
     return 1
 
 
@@ -99,7 +101,23 @@ def detail_help(menu: str) -> int:  # tampilkan detail command pilihan user
             "  Kalau sudah staged, langsung commit dan push.",
             "  Kalau sudah commit, langsung push saja.",
         ],
-    }
+        "6": [
+            "PT VERSI",
+            "Tulis version ke config.json di folder sekarang.",
+            "Pakai:",
+            "  pt versi x",
+            "  pt versi x suffix",
+            "Contoh:",
+            "  pt versi 1",
+            "  pt versi 1 beta",
+            "Format:",
+            "  x.YY.MMDD",
+            "  x.YY.MMDD.suffix",
+            "Catatan:",
+            "  x wajib angka.",
+            "  suffix opsional dan tidak boleh pakai spasi.",
+            "  Kalau versi baru, changelog ditulis ke changelog.json.",
+        ],    }
     lines = details[menu]
     print("+------------------------------------------------------------+")
     print(f"| {lines[0]:<58} |")
@@ -211,4 +229,14 @@ def commit_command(args: list[str]) -> int:  # handle command pt commit
         print("commit dibatalkan")
         return 1
     print(f"commit pushed: {message}")
+    return 0
+
+def versi_command(args: list[str]) -> int:  # handle command pt versi
+    if len(args) not in {2, 3}:
+        print("pakai: pt versi x [suffix]")
+        return 1
+
+    suffix = args[2] if len(args) == 3 else None
+    version = write_version(Path.cwd(), args[1], suffix)
+    print(f"version: {version}")
     return 0

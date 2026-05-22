@@ -8,6 +8,7 @@ from .commands import (
     enkrip_command,
     mini_command,
     show_help,
+    versi_command,
 )
 
 
@@ -26,7 +27,9 @@ def main() -> int:  # router command utama CLI
             return dekrip_command(args)
         if command == "commit":
             return commit_command(args)
-        if command in {"1", "2", "3", "4", "5"}:
+        if command == "versi":
+            return versi_command(args)
+        if command in {"1", "2", "3", "4", "5", "6"}:
             return detail_help(command)
         return show_help()
     except Exception as error:

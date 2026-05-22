@@ -18,6 +18,7 @@ Lalu dibuatlah project ini.
 - `enkrip`: enkripsi kumpulan file/folder ke `extras.mwehe`
 - `dekrip`: dekripsi `extras.mwehe` ke folder sekarang
 - `commit`: git add, commit, lalu push ke `origin main`
+- `versi`: tulis versi project ke `config.json` dan changelog ke `changelog.json`
 
 Kamu boleh usul nambah fitur dengan chat aku.
 
@@ -87,6 +88,7 @@ pt 2
 pt 3
 pt 4
 pt 5
+pt 6
 ```
 
 ---
@@ -263,8 +265,69 @@ Catatan:
 - kalau branch lokal masih `master`, tool akan coba ubah ke `main` saat push perlu
 - kalau remote belum ada, tool akan tanya untuk add remote
 
----
+### 8. Versi
 
+Tulis versi project ke `config.json` di folder sekarang.
+
+```bash
+pt versi x
+```
+
+Atau pakai suffix:
+
+```bash
+pt versi x suffix
+```
+
+Format versi:
+
+```txt
+x.YY.MMDD
+x.YY.MMDD.suffix
+```
+
+Contoh tanggal 22 Mei 2026:
+
+```bash
+pt versi 1
+```
+
+Hasil di `config.json`:
+
+```json
+{
+  "version": "1.26.0522"
+}
+```
+
+Contoh dengan suffix:
+
+```bash
+pt versi 1 beta
+```
+
+Hasil:
+
+```json
+{
+  "version": "1.26.0522.beta"
+}
+```
+
+Aturan:
+
+- `x` wajib angka
+- `suffix` opsional
+- `suffix` tidak boleh pakai spasi
+- kalau `config.json` belum ada, file dibuat otomatis
+- kalau `changelog.json` belum ada, file dibuat otomatis
+- setiap bikin versi baru, user diminta menulis changelog
+- changelog ditulis ke `changelog.json`
+- enter kosong menyelesaikan input changelog
+- versi angka sama tapi suffix beda dianggap versi baru
+- versi angka dan suffix sama akan gagal
+
+---
 ## File Yang Didukung
 
 `pt enkrip` bisa untuk file/folder apa saja.
@@ -295,6 +358,7 @@ project-toolkit/
     |-- minifier.py
     |-- archive.py
     |-- gittools.py
+    |-- versioning.py
     `-- paths.py
 ```
 
