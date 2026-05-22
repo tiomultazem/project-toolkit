@@ -1,0 +1,5 @@
+[Dd]esktop.ini
+__pycache__/
+*.egg-info/
+build/
+dist/
