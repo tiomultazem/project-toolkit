@@ -125,7 +125,7 @@ Satu folder:
 pt mini folder/
 ```
 
-Dengan passphrase:
+Dengan passphrase opsional:
 
 ```bash
 pt mini file.py aku-cinta-kantorku
@@ -151,25 +151,34 @@ app.py,main.py,utils.py
 Behavior output:
 
 ```txt
-file.py -> realfile.py sebagai file asli
-file.py -> jadi file obfuscated dengan nama lama
+Tanpa passphrase:
+file.py -> tetap file.py, tapi isinya obfuscated
+file.py asli -> disimpan ke .pt_real/file.py
 
-folder/ -> realfolder/ sebagai folder asli
-folder/ -> jadi folder obfuscated dengan nama lama
+Dengan passphrase:
+file.py -> tetap file.py, tapi isinya obfuscated + payload terenkripsi
+file.py asli -> tidak disimpan ke .pt_real, recovery pakai pt demini
+
+Folder:
+folder/app.py -> tetap folder/app.py, tapi isinya obfuscated
+folder/app.py asli -> disimpan ke .pt_real/folder/app.py hanya kalau tanpa passphrase
 ```
 
 Penting:
 
+- `.pt_real/` wajib masuk `.gitignore`
+- `.pt_real/` hanya dibuat saat `pt mini` tanpa passphrase
+- struktur folder asli dimirror di `.pt_real/` untuk mode tanpa passphrase
 - `app.py,main.py` benar
 - `app.py, main.py` salah
 - spasi setelah daftar file/folder dianggap passphrase
-- passphrase bebas/custom, tapi tidak boleh pakai spasi
-- passphrase berlaku untuk semua file/folder dalam command
-- tanpa passphrase tidak bisa dibalik pakai `pt demini`
+- passphrase bebas/custom, tapi tidak wajib
+- passphrase membuat recovery lewat `pt demini`, jadi `.pt_real/` tidak dibuat
+- kalau file terlihat sudah minified, command akan warning `sudah berupa minified. tetap lanjutkan?`
 
 ### 2. Demini
 
-Balikin hasil `pt mini` yang pakai passphrase.
+Decrypt file hasil `pt mini ... passphrase`.
 
 Single file:
 
@@ -198,17 +207,17 @@ pt demini folder/ passphrase
 Behavior output:
 
 ```txt
-file.py -> realfile.py
-folder/ -> realfolder/realfile.py
+payload terenkripsi + passphrase -> file.py source asli
+payload terenkripsi + passphrase -> folder/app.py source asli
 ```
 
 Catatan:
 
-- input harus hasil `pt mini ... passphrase`
-- passphrase harus sama dengan saat `pt mini`
+- passphrase wajib dan harus sama dengan saat `pt mini`
+- `demini` membaca payload terenkripsi dari file obfuscated
+- file obfuscated tidak disimpan karena bisa dibuat ulang dengan `pt mini`
 - listfile boleh dipisah enter atau koma
 - file/folder yang gagal akan dilewati, proses lain tetap lanjut
-
 ### 3. Enkrip
 
 Enkripsi file/folder dari folder sekarang ke `extras.ptk`.
@@ -277,7 +286,9 @@ Syarat:
 
 ### 5. Commit
 
-Jalankan `git add .`, `git commit -m`, lalu `git push origin main` dari folder sekarang.
+Jalankan git add, commit, lalu push ke `origin main` dari folder sekarang.
+
+Commit semua perubahan:
 
 ```bash
 pt commit pesan commit
@@ -297,25 +308,50 @@ git commit -m "update readme"
 git push origin main
 ```
 
+Commit satu file saja:
+
+```bash
+pt commit -one file.ext pesan commit
+```
+
+Contoh:
+
+```bash
+pt commit -one file.ext commit file.ext
+```
+
+Yang dijalankan:
+
+```bash
+git add -- file.ext
+git commit -m "commit file.ext" -- file.ext
+git push origin main
+```
+
 Catatan:
 
 - semua kata setelah `commit` jadi pesan commit
+- untuk `-one`, semua kata setelah nama file jadi pesan commit
+- `-one` hanya commit file yang disebut
 - branch push masih tetap `main`
 - kalau branch lokal masih `master`, tool akan coba ubah ke `main` saat push perlu
 - kalau remote belum ada, tool akan tanya untuk add remote
-
 ### 6. Versi
 
 Tulis versi project ke `config.json` di folder sekarang.
 
+Versi pertama, saat `config.json` belum punya key `version`:
+
 ```bash
 pt versi x
+pt versi x suffix
 ```
 
-Atau pakai suffix:
+Setelah `config.json` sudah punya `version`, angka utama diambil otomatis dari config:
 
 ```bash
-pt versi x suffix
+pt versi
+pt versi suffix
 ```
 
 Format versi:
@@ -325,7 +361,7 @@ x.YY.MMDD
 x.YY.MMDD.suffix
 ```
 
-Contoh tanggal 22 Mei 2026:
+Contoh versi pertama tanggal 22 Mei 2026:
 
 ```bash
 pt versi 1
@@ -339,10 +375,10 @@ Hasil di `config.json`:
 }
 ```
 
-Contoh dengan suffix:
+Contoh versi berikutnya dengan suffix:
 
 ```bash
-pt versi 1 beta
+pt versi beta
 ```
 
 Hasil:
@@ -353,9 +389,16 @@ Hasil:
 }
 ```
 
+Invalid kalau `config.json` sudah punya `version`:
+
+```bash
+pt versi 1 beta
+```
+
 Aturan:
 
-- `x` wajib angka
+- `x` wajib hanya untuk versi pertama
+- kalau `config.json` sudah punya `version`, angka utama `x` diambil otomatis dari config
 - `suffix` opsional
 - `suffix` tidak boleh pakai spasi
 - kalau `config.json` belum ada, file dibuat otomatis
@@ -365,8 +408,6 @@ Aturan:
 - enter kosong menyelesaikan input changelog
 - versi angka sama tapi suffix beda dianggap versi baru
 - versi angka dan suffix sama akan gagal
-
-
 ### 7. Updater
 
 Inject updater otomatis ke project Flask atau CTk.
@@ -518,9 +559,9 @@ python -m pip uninstall project-toolkit
 
 ## Catatan
 
-`pt mini` tanpa passphrase tidak punya payload reverse.
+`pt mini` mengubah file normal menjadi obfuscated dengan nama tetap sama; tanpa passphrase source asli disimpan ke `.pt_real/`, sedangkan dengan passphrase source asli tidak disimpan ke `.pt_real/` karena recovery dilakukan lewat `pt demini`.
 
-`pt mini` dengan passphrase bisa direverse karena source asli disimpan terenkripsi di dalam file obfuscated.
+`pt demini` membaca payload terenkripsi dari file obfuscated, mendekripsinya dengan passphrase, lalu menulis source asli ke path normal; file obfuscated bisa dibuat ulang kapan saja dengan `pt mini`.
 
 `pt enkrip` tidak khusus Python. Dia membungkus bytes file/folder apa saja ke `extras.ptk`.
 

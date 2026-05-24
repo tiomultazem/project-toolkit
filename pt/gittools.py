@@ -131,6 +131,33 @@ def stage_and_commit_if_needed(project_dir: Path, message: str) -> None:  # add/
         print("tidak ada staged changes, skip commit")
 
 
+def _relative_git_path(project_dir: Path, file_path: str) -> str:  # path aman untuk git pathspec
+    resolved = (project_dir / file_path).resolve()
+    try:
+        relative = resolved.relative_to(project_dir.resolve())
+    except ValueError as error:
+        raise ValueError("file harus berada di dalam project") from error
+    return relative.as_posix()
+
+
+def has_file_changes(project_dir: Path, git_path: str) -> bool:  # cek satu file berubah atau untracked
+    result = git_result(project_dir, ["status", "--porcelain", "--", git_path])
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0:
+        raise GitCommandError(["status", "--porcelain", "--", git_path], output)
+    return bool(result.stdout.strip())
+
+
+def stage_and_commit_one_if_needed(project_dir: Path, file_path: str, message: str) -> None:  # commit satu file saja
+    git_path = _relative_git_path(project_dir, file_path)
+    if not has_file_changes(project_dir, git_path):
+        print(f"tidak ada perubahan di {git_path}, lanjut push")
+        return
+
+    run_git(project_dir, ["add", "--", git_path])
+    run_git(project_dir, ["commit", "-m", message, "--", git_path])
+
+
 def run_git_commit(
     project_dir: Path,
     message: str,
@@ -149,5 +176,29 @@ def run_git_commit(
         return False
 
     stage_and_commit_if_needed(project_dir, message)
+    push_with_branch_fix(project_dir, remote_name, branch)
+    return True
+
+def run_git_commit_one(
+    project_dir: Path,
+    file_path: str,
+    message: str,
+    remote_name: str = DEFAULT_REMOTE,
+    branch: str = DEFAULT_BRANCH,
+) -> bool:  # git add/commit satu file saja, lalu push main
+    if not file_path.strip():
+        raise ValueError("file kosong")
+    if not message.strip():
+        raise ValueError("pesan commit kosong")
+
+    if not remote_exists(project_dir, remote_name):
+        added, remote_name, branch = add_remote_flow(project_dir)
+        if not added:
+            return False
+        if ask_yes_no("ulangi commit? y/n: "):
+            return run_git_commit_one(project_dir, file_path, message, remote_name, branch)
+        return False
+
+    stage_and_commit_one_if_needed(project_dir, file_path, message)
     push_with_branch_fix(project_dir, remote_name, branch)
     return True

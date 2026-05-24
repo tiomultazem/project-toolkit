@@ -82,15 +82,25 @@ def should_write_changelog(old_version: str | None, new_version: str) -> bool:  
     return old_parts.number < new_parts.number or old_parts.suffix != new_parts.suffix
 
 
-def write_version(project_dir: Path, major: str, suffix: str | None = None) -> str:  # tulis config dan changelog
+def current_major(version: str) -> str:  # ambil angka utama dari versi lama
+    parts = parse_version(version)
+    return str(parts.major)
+
+
+def write_version(project_dir: Path, major: str | None = None, suffix: str | None = None) -> str:  # tulis config dan changelog
     if suffix and any(char.isspace() for char in suffix):
         raise ValueError("suffix tidak boleh pakai spasi")
 
     config_path = project_dir / CONFIG_NAME
     changelog_path = project_dir / CHANGELOG_NAME
-    new_version = build_version(major, suffix)
     config = load_json(config_path, {})
     old_version = config.get("version")
+    if old_version:
+        major = current_major(str(old_version))
+    elif not major:
+        raise ValueError("x wajib angka untuk versi pertama")
+
+    new_version = build_version(major, suffix)
 
     if should_write_changelog(old_version, new_version):
         changelog = load_json(changelog_path, {})
