@@ -7,8 +7,8 @@ from pathlib import Path
 from .crypto import decrypt_bytes, encrypt_bytes
 
 
-ARCHIVE_NAME = "extras.mwehe"
-MAGIC = "PTMWEHE1"
+ARCHIVE_NAME = "extras.ptk"
+MAGIC = "PTK1"
 
 
 def split_entries(text: str) -> list[str]:  # pecah input koma/baris jadi list path
@@ -66,7 +66,7 @@ def build_tar_bytes(base_dir: Path, entries: list[str]) -> bytes:  # bungkus fil
     return buffer.getvalue()
 
 
-def encrypt_extras(base_dir: Path, entries: list[str], passphrase: str) -> Path:  # buat extras.mwehe terenkripsi
+def encrypt_extras(base_dir: Path, entries: list[str], passphrase: str) -> Path:  # buat extras.ptk terenkripsi
     output_path = base_dir / ARCHIVE_NAME
     tar_bytes = build_tar_bytes(base_dir, entries)
     compressed = zlib.compress(tar_bytes, 9)
@@ -83,14 +83,14 @@ def assert_safe_member(base_dir: Path, member: tarfile.TarInfo) -> None:  # cega
         raise ValueError(f"isi archive berbahaya: {member.name}") from error
 
 
-def decrypt_extras(base_dir: Path, passphrase: str) -> None:  # ekstrak extras.mwehe ke folder sekarang
+def decrypt_extras(base_dir: Path, passphrase: str) -> None:  # ekstrak extras.ptk ke folder sekarang
     archive_path = base_dir / ARCHIVE_NAME
     if not archive_path.exists():
         raise FileNotFoundError(f"archive tidak ada: {archive_path}")
 
     lines = archive_path.read_text(encoding="utf-8").splitlines()
     if len(lines) < 2 or lines[0] != MAGIC:
-        raise ValueError("format extras.mwehe tidak valid")
+        raise ValueError("format extras.ptk tidak valid")
 
     compressed = decrypt_bytes(lines[1], passphrase)
     tar_bytes = zlib.decompress(compressed)

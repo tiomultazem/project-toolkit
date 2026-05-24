@@ -14,4 +14,4 @@ def read_source(source_path: Path) -> str:  # baca file .py dan validasi path
         raise FileNotFoundError(f"file tidak ada: {source_path}")
     if source_path.suffix != ".py":
         raise ValueError("file harus .py")
-    return source_path.read_text(encoding="utf-8")
+    return source_path.read_text(encoding="utf-8-sig")

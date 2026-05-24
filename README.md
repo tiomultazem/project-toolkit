@@ -13,12 +13,13 @@ Lalu dibuatlah project ini.
 
 ## Isi sekarang
 
-- `mini`: minify + obfuscate file Python
+- `mini`: hard minify + obfuscate file Python
 - `demini`: balikin hasil `mini` yang pakai passphrase
-- `enkrip`: enkripsi kumpulan file/folder ke `extras.mwehe`
-- `dekrip`: dekripsi `extras.mwehe` ke folder sekarang
+- `enkrip`: enkripsi kumpulan file/folder ke `extras.ptk`
+- `dekrip`: dekripsi `extras.ptk` ke folder sekarang
 - `commit`: git add, commit, lalu push ke `origin main`
 - `versi`: tulis versi project ke `config.json` dan changelog ke `changelog.json`
+- `updater`: rencana injeksi updater otomatis untuk Flask/CTk
 
 Kamu boleh usul nambah fitur dengan chat aku.
 
@@ -89,6 +90,7 @@ pt 3
 pt 4
 pt 5
 pt 6
+pt 7
 ```
 
 ---
@@ -97,81 +99,121 @@ pt 6
 
 ### 1. Mini
 
-Minify + obfuscate file Python.
+Hard minify + obfuscate file Python.
+
+Single file:
 
 ```bash
 pt mini file.py
 ```
 
-Output dibuat di folder yang sama.
-
-```txt
-filemob.py
-```
-
-Contoh:
+Banyak file, pisahkan dengan koma tanpa spasi:
 
 ```bash
-pt mini app.py
+pt mini app.py,main.py,utils.py
 ```
 
-Hasil:
-
-```txt
-appmob.py
-```
-
-### 2. Mini Dengan Passphrase
-
-Sama seperti `mini`, tapi bisa dibalik lagi.
+Dari listfile:
 
 ```bash
-pt mini file.py passphrase
+pt mini list.txt
 ```
 
-Contoh:
+Satu folder:
 
 ```bash
-pt mini app.py aku-cinta-kantorku
+pt mini folder/
 ```
 
-Output:
+Dengan passphrase:
+
+```bash
+pt mini file.py aku-cinta-kantorku
+pt mini app.py,main.py aku-cinta-kantorku
+pt mini list.txt aku-cinta-kantorku
+pt mini folder/ aku-cinta-kantorku
+```
+
+Isi `list.txt` boleh dipisah enter:
 
 ```txt
-appmob.py
+app.py
+main.py
+utils.py
+```
+
+Atau koma:
+
+```txt
+app.py,main.py,utils.py
+```
+
+Behavior output:
+
+```txt
+file.py -> realfile.py sebagai file asli
+file.py -> jadi file obfuscated dengan nama lama
+
+folder/ -> realfolder/ sebagai folder asli
+folder/ -> jadi folder obfuscated dengan nama lama
+```
+
+Penting:
+
+- `app.py,main.py` benar
+- `app.py, main.py` salah
+- spasi setelah daftar file/folder dianggap passphrase
+- passphrase bebas/custom, tapi tidak boleh pakai spasi
+- passphrase berlaku untuk semua file/folder dalam command
+- tanpa passphrase tidak bisa dibalik pakai `pt demini`
+
+### 2. Demini
+
+Balikin hasil `pt mini` yang pakai passphrase.
+
+Single file:
+
+```bash
+pt demini file.py passphrase
+```
+
+Banyak file:
+
+```bash
+pt demini app.py,main.py passphrase
+```
+
+Dari listfile:
+
+```bash
+pt demini list.txt passphrase
+```
+
+Satu folder:
+
+```bash
+pt demini folder/ passphrase
+```
+
+Behavior output:
+
+```txt
+file.py -> realfile.py
+folder/ -> realfolder/realfile.py
 ```
 
 Catatan:
 
-- passphrase bebas/custom
-- passphrase tidak boleh pakai spasi
-- file hasil ini bisa dibalik pakai `pt demini`
+- input harus hasil `pt mini ... passphrase`
+- passphrase harus sama dengan saat `pt mini`
+- listfile boleh dipisah enter atau koma
+- file/folder yang gagal akan dilewati, proses lain tetap lanjut
 
-### 3. Demini
+### 3. Enkrip
 
-Balikin hasil `pt mini file.py passphrase`.
+Enkripsi file/folder dari folder sekarang ke `extras.ptk`.
 
-```bash
-pt demini filemob.py passphrase
-```
-
-Contoh:
-
-```bash
-pt demini appmob.py aku-cinta-kantorku
-```
-
-Output:
-
-```txt
-demappmob.py
-```
-
-Catatan: `demini` tidak bisa membalik file hasil `mini` tanpa passphrase.
-
-### 4. Enkrip Manual
-
-Enkripsi file/folder dari folder sekarang ke `extras.mwehe`.
+Cara manual:
 
 ```bash
 pt enkrip passphrase
@@ -183,15 +225,7 @@ Setelah enter, isi daftar file/folder dipisah koma.
 .env,app.py,static/
 ```
 
-Output:
-
-```txt
-extras.mwehe
-```
-
-### 5. Enkrip Dari Listfile
-
-Enkripsi file/folder dari daftar di file teks.
+Cara listfile:
 
 ```bash
 pt enkrip passphrase listfile.txt
@@ -211,15 +245,20 @@ Atau koma:
 .env,app.py,static/
 ```
 
-Output tetap:
+Output:
 
 ```txt
-extras.mwehe
+extras.ptk
 ```
 
-### 6. Dekrip
+Catatan:
 
-Dekripsi `extras.mwehe` ke folder sekarang.
+- passphrase bebas/custom, tapi tidak boleh pakai spasi
+- file apa saja bisa: `.env`, `.jpg`, `.png`, `.xlsx`, dll
+- folder boleh ditulis `static/` biar jelas
+### 4. Dekrip
+
+Dekripsi `extras.ptk` ke folder sekarang.
 
 ```bash
 pt dekrip passphrase
@@ -233,10 +272,10 @@ pt dekrip aku-cinta-kantorku
 
 Syarat:
 
-- `extras.mwehe` ada di folder sekarang
+- `extras.ptk` ada di folder sekarang
 - passphrase sama seperti saat `pt enkrip`
 
-### 7. Commit
+### 5. Commit
 
 Jalankan `git add .`, `git commit -m`, lalu `git push origin main` dari folder sekarang.
 
@@ -265,7 +304,7 @@ Catatan:
 - kalau branch lokal masih `master`, tool akan coba ubah ke `main` saat push perlu
 - kalau remote belum ada, tool akan tanya untuk add remote
 
-### 8. Versi
+### 6. Versi
 
 Tulis versi project ke `config.json` di folder sekarang.
 
@@ -327,6 +366,67 @@ Aturan:
 - versi angka sama tapi suffix beda dianggap versi baru
 - versi angka dan suffix sama akan gagal
 
+
+### 7. Updater
+
+Inject updater otomatis ke project Flask atau CTk.
+
+Format command:
+
+```bash
+pt updater flask main.py templates/index.html
+pt updater ctk main.py
+```
+
+Behavior Flask:
+
+- membuat `pt_update_core.py`
+- inject route backend ke `main.py`
+- inject SweetAlert ke `templates/index.html`
+- user tetap buka halaman home biasa
+- JavaScript otomatis cek `/pt-updater/check`
+- kalau ada versi baru, SweetAlert muncul
+- klik unduh pembaruan akan hit `/pt-updater/apply`
+- backend download zip repo, unpack, replace isi project, hapus temp, lalu rerun app
+
+Behavior CTk/Desktop:
+
+- membuat `updater.py`
+- inject pemanggil updater ke `main.py`
+- saat app jalan, `updater.py` dibuka sebagai proses kecil terpisah
+- kalau ada versi baru, muncul jendela updater CTk
+- klik unduh pembaruan akan download zip repo, unpack, replace isi project, hapus temp, lalu rerun app
+
+Syarat umum:
+
+- repo GitHub public ada di remote `origin`
+- branch default `main`
+- repo punya `config.json`
+- repo punya `changelog.json`
+- project lokal punya `config.json`
+- update boleh replace isi project sekarang
+- file yang dilewati: `.git`, `.env`, `extras.ptk`, `.pt_backup`, `__pycache__`, `.venv`, `venv`, `env`, `node_modules`
+
+Syarat Flask:
+
+- `main.py` adalah file Flask utama
+- `main.py` punya object `app = Flask(...)`
+- `templates/index.html` adalah halaman home yang dibuka user
+- app dijalankan dengan `python main.py`
+
+Syarat CTk/Desktop:
+
+- `main.py` adalah file utama desktop
+- app dijalankan dengan `python main.py`
+- project memakai `customtkinter`
+- app boleh ditutup lalu dijalankan ulang oleh updater
+
+Catatan:
+
+- updater membuat backup ke `.pt_backup/` sebelum replace
+- kalau Flask dijalankan via service, gunicorn, waitress, atau hosting khusus, restart otomatis bisa butuh mode khusus
+- kalau remote private, updater belum support token
+- kalau file sedang dikunci Windows, replace bisa gagal
 ---
 ## File Yang Didukung
 
@@ -418,10 +518,10 @@ python -m pip uninstall project-toolkit
 
 ## Catatan
 
-`pt mini` tanpa passphrase tidak bisa direverse.
+`pt mini` tanpa passphrase tidak punya payload reverse.
 
-`pt mini` dengan passphrase bisa direverse karena source asli disimpan terenkripsi di dalam `filemob.py`.
+`pt mini` dengan passphrase bisa direverse karena source asli disimpan terenkripsi di dalam file obfuscated.
 
-`pt enkrip` tidak khusus Python. Dia membungkus bytes file/folder apa saja ke `extras.mwehe`.
+`pt enkrip` tidak khusus Python. Dia membungkus bytes file/folder apa saja ke `extras.ptk`.
 
 Satu `pt`, banyak fungsi.
