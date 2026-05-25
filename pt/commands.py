@@ -1,4 +1,3 @@
-import json
 import re
 from pathlib import Path
 
@@ -8,7 +7,7 @@ from .gittools import run_git_commit, run_git_commit_one
 from .minifier import REV_MARKER, make_loader, minify_source
 from .paths import read_source
 from .updater import updater_command
-from .versioning import write_version
+from .versioning import read_config_version, write_version
 
 
 def show_help() -> int:  # tampilkan bantuan command untuk user
@@ -130,13 +129,16 @@ def detail_help(menu: str) -> int:  # tampilkan detail command pilihan user
             "  pt versi 1",
             "  pt versi beta",
             "Format:",
-            "  x.YY.MMDD",
-            "  x.YY.MMDD.suffix",
+            "  x.YYMM.DD",
+            "  x.YYMM.DD.suffix",
+            "  x.YY.MM.DD juga auto detect kalau config lama pakai itu.",
             "Catatan:",
+            "  Format versi lama auto detect; fallback tetap x.YYMM.DD.",
             "  x wajib hanya untuk versi pertama.",
-            "  Kalau version sudah ada, x diambil dari config.json.",
+            "  Key versi auto detect: version, Version, v, ver, currentVersion, dll.",
+            "  Kalau key versi sudah ada, x diambil dari config.json.",
             "  suffix opsional dan tidak boleh pakai spasi.",
-            "  pt versi 1 beta invalid bila config sudah punya version.",
+            "  pt versi 1 beta invalid bila config sudah punya key versi.",
         ],
         "7": [
             "PT UPDATER",
@@ -472,11 +474,8 @@ def commit_command(args: list[str]) -> int:  # handle command pt commit
     return 0
 
 def _config_has_version(project_dir: Path) -> bool:  # cek config punya key version
-    config_path = project_dir / "config.json"
-    if not config_path.exists():
-        return False
     try:
-        return bool(json.loads(config_path.read_text(encoding="utf-8-sig")).get("version"))
+        return read_config_version(project_dir) is not None
     except Exception:
         return False
 

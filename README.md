@@ -340,14 +340,14 @@ Catatan:
 
 Tulis versi project ke `config.json` di folder sekarang.
 
-Versi pertama, saat `config.json` belum punya key `version`:
+Versi pertama, saat `config.json` belum punya key versi:
 
 ```bash
 pt versi x
 pt versi x suffix
 ```
 
-Setelah `config.json` sudah punya `version`, angka utama diambil otomatis dari config:
+Setelah `config.json` sudah punya key versi, angka utama diambil otomatis dari config:
 
 ```bash
 pt versi
@@ -357,9 +357,21 @@ pt versi suffix
 Format versi:
 
 ```txt
+x.YYMM.DD
+x.YYMM.DD.suffix
+```
+
+Format lain yang juga auto-detect:
+
+```txt
 x.YY.MMDD
 x.YY.MMDD.suffix
+x.YY.MM.DD
+x.YY.MM.DD.suffix
 ```
+
+Kalau `config.json` sudah punya versi lama format `x.YY.MMDD` atau `x.YY.MM.DD`, tool akan ikut format lama itu.
+Kalau format tidak terdeteksi atau versi belum ada, fallback ke `x.YYMM.DD`.
 
 Contoh versi pertama tanggal 22 Mei 2026:
 
@@ -371,7 +383,7 @@ Hasil di `config.json`:
 
 ```json
 {
-  "version": "1.26.0522"
+  "version": "1.2605.22"
 }
 ```
 
@@ -385,7 +397,7 @@ Hasil:
 
 ```json
 {
-  "version": "1.26.0522.beta"
+  "version": "1.2605.22.beta"
 }
 ```
 
@@ -398,7 +410,10 @@ pt versi 1 beta
 Aturan:
 
 - `x` wajib hanya untuk versi pertama
-- kalau `config.json` sudah punya `version`, angka utama `x` diambil otomatis dari config
+- key versi auto detect: `version`, `Version`, `v`, `ver`, `currentVersion`, `current_version`, `appVersion`, `projectVersion`, dan variasi umum lain
+- kalau key versi sudah ada, key itu dipakai lagi
+- kalau belum ada key versi, tool membuat key `version`
+- kalau `config.json` sudah punya key versi, angka utama `x` diambil otomatis dari config
 - `suffix` opsional
 - `suffix` tidak boleh pakai spasi
 - kalau `config.json` belum ada, file dibuat otomatis
