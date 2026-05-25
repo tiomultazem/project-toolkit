@@ -12,7 +12,7 @@ from .versioning import read_config_version, write_version
 
 def show_help() -> int:  # tampilkan bantuan command untuk user
     print("+------------------------------------------------------------+")
-    print("| PT - Python Project Toolkit                         v1.0   |")
+    print("| PT - Python Project Toolkit                  v1.26.0522.lt |")
     print("| 2026 | Made with <3 by Gilang Wahyu Prasetyo               |")
     print("| (c) BPS Kabupaten Tabalong                                 |")
     print("+------------------------------------------------------------+")
