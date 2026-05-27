@@ -13,13 +13,14 @@ Lalu dibuatlah project ini.
 
 ## Isi sekarang
 
-- `mini`: hard minify + obfuscate file Python
+- `mini`: pack/obfuscate file Python dengan loader brutal
 - `demini`: balikin hasil `mini` yang pakai passphrase
 - `enkrip`: enkripsi kumpulan file/folder ke `extras.ptk`
 - `dekrip`: dekripsi `extras.ptk` ke folder sekarang
 - `commit`: git add, commit, lalu push ke `origin main`
 - `versi`: tulis versi project ke `config.json` dan changelog ke `changelog.json`
 - `updater`: rencana injeksi updater otomatis untuk Flask/CTk
+- `seal`: suntik isi JSON ke file Python, lalu JSON asli diignore
 
 Kamu boleh usul nambah fitur dengan chat aku.
 
@@ -91,6 +92,7 @@ pt 4
 pt 5
 pt 6
 pt 7
+pt 8
 ```
 
 ---
@@ -99,7 +101,7 @@ pt 7
 
 ### 1. Mini
 
-Hard minify + obfuscate file Python.
+Pack + obfuscate file Python.
 
 Single file:
 
@@ -133,6 +135,8 @@ pt mini app.py,main.py aku-cinta-kantorku
 pt mini list.txt aku-cinta-kantorku
 pt mini folder/ aku-cinta-kantorku
 ```
+
+
 
 Isi `list.txt` boleh dipisah enter:
 
@@ -174,7 +178,13 @@ Penting:
 - spasi setelah daftar file/folder dianggap passphrase
 - passphrase bebas/custom, tapi tidak wajib
 - passphrase membuat recovery lewat `pt demini`, jadi `.pt_real/` tidak dibuat
-- kalau file terlihat sudah minified, command akan warning `sudah berupa minified. tetap lanjutkan?`
+- default `pt mini` adalah **Brutal but Safe**: source asli akan selalu direname variabelnya, dihapus docstring-nya, dan diobfuscate string literalnya.
+- algoritma aman: parameter route Flask/FastAPI, argumen keyword lokal, dan nama class method dilindungi dari rename agar runtime OOP (seperti Tkinter) dan framework web tidak rusak.
+- setelah minify, auto smoke test `py_compile` dan `import target`
+- kalau Flask app terdeteksi, route bind dicek pakai dummy path var
+- kalau smoke gagal, proses dibatalkan dan file dikembalikan seperti semula
+- kalau file punya `# PT_REV`, source asli didecode dulu sebelum mini ulang
+- kalau loader tidak punya source asli atau backup `.pt_real`, proses batal
 
 ### 2. Demini
 
@@ -483,10 +493,57 @@ Catatan:
 - kalau Flask dijalankan via service, gunicorn, waitress, atau hosting khusus, restart otomatis bisa butuh mode khusus
 - kalau remote private, updater belum support token
 - kalau file sedang dikunci Windows, replace bisa gagal
+
+### 8. Seal
+
+Suntik isi JSON ke file Python.
+
+Single file:
+
+```bash
+pt seal file.json app.py
+```
+
+Satu folder:
+
+```bash
+pt seal folder/ app.py
+```
+
+Behavior output:
+
+```txt
+file.json -> tetap ada, tetap tempat edit utama
+folder/ -> tetap ada, tetap tempat edit utama
+app.py -> disuntik sealed data dari JSON
+.gitignore -> ditambah file.json atau folder/
+```
+
+Yang tetap jalan di app:
+
+```python
+json.load(open("config.json"))
+Path("config.json").read_text()
+Path("config.json").exists()
+Path("config.json").is_file()
+```
+
+Catatan:
+
+- file/folder JSON asli tidak dihapus
+- file/folder JSON asli tidak dipindah
+- folder dibaca recursive untuk semua `*.json`
+- `pt seal` boleh diulang setelah JSON diedit
+- blok seal lama akan diganti, tidak dobel
+- kalau target terlihat obfuscated/minified, proses batal
+- kalau batal karena obfuscated/minified, tool cari `REALAPP`/`REALMAIN`
+- seal ini obfuscation, bukan enkripsi runtime anti-bongkar
 ---
 ## File Yang Didukung
 
 `pt enkrip` bisa untuk file/folder apa saja.
+
+`pt seal` khusus untuk file `.json` atau folder berisi `.json`.
 
 Contoh:
 
@@ -515,6 +572,7 @@ project-toolkit/
     |-- archive.py
     |-- gittools.py
     |-- versioning.py
+    |-- sealer.py
     `-- paths.py
 ```
 
@@ -574,7 +632,7 @@ python -m pip uninstall project-toolkit
 
 ## Catatan
 
-`pt mini` mengubah file normal menjadi obfuscated dengan nama tetap sama; tanpa passphrase source asli disimpan ke `.pt_real/`, sedangkan dengan passphrase source asli tidak disimpan ke `.pt_real/` karena recovery dilakukan lewat `pt demini`.
+`pt mini` menggunakan mode **Brutal but Safe** secara default. Semua file Python akan diproses secara mendalam lewat manipulasi AST (menghapus nama asli variabel, obfuscate string, membuang docstring) namun secara otomatis melindungi antarmuka krusial seperti method OOP Tkinter dan route argumen Flask agar tetap aman di runtime.
 
 `pt demini` membaca payload terenkripsi dari file obfuscated, mendekripsinya dengan passphrase, lalu menulis source asli ke path normal; file obfuscated bisa dibuat ulang kapan saja dengan `pt mini`.
 

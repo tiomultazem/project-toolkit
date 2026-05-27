@@ -7,6 +7,7 @@ from .commands import (
     detail_help,
     enkrip_command,
     mini_command,
+    seal_command,
     show_help,
     updater_command,
     versi_command,
@@ -20,6 +21,8 @@ def main() -> int:  # router command utama CLI
     try:
         if command == "mini":
             return mini_command(args)
+        if command == "seal":
+            return seal_command(args)
         if command == "demini":
             return demini_command(args)
         if command == "enkrip":
@@ -32,7 +35,7 @@ def main() -> int:  # router command utama CLI
             return versi_command(args)
         if command == "updater":
             return updater_command(args)
-        if command in {"1", "2", "3", "4", "5", "6", "7"}:
+        if command in {"1", "2", "3", "4", "5", "6", "7", "8"}:
             return detail_help(command)
         return show_help()
     except Exception as error:

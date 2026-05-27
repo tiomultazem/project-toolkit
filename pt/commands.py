@@ -1,4 +1,7 @@
+import py_compile
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 from .archive import decrypt_extras, encrypt_extras, get_archive_entries
@@ -6,13 +9,14 @@ from .crypto import decrypt, encrypt
 from .gittools import run_git_commit, run_git_commit_one
 from .minifier import REV_MARKER, make_loader, minify_source
 from .paths import read_source
+from .sealer import seal_command
 from .updater import updater_command
 from .versioning import read_config_version, write_version
 
 
 def show_help() -> int:  # tampilkan bantuan command untuk user
     print("+------------------------------------------------------------+")
-    print("| PT - Python Project Toolkit                  v1.26.0525.lt |")
+    print("| PT - Python Project Toolkit                         v1.0   |")
     print("| 2026 | Made with <3 by Gilang Wahyu Prasetyo               |")
     print("| (c) BPS Kabupaten Tabalong                                 |")
     print("+------------------------------------------------------------+")
@@ -23,15 +27,16 @@ def show_help() -> int:  # tampilkan bantuan command untuk user
     print("| 5. pt commit  -> git add, commit, push main                |")
     print("| 6. pt versi   -> tulis versi dan changelog                 |")
     print("| 7. pt updater -> inject updater project                    |")
+    print("| 8. pt seal    -> suntik JSON ke Python                     |")
     print("+------------------------------------------------------------+")
-    print("Ketik: pt [1-7] untuk detail command. Contoh: pt 7")
+    print("Ketik: pt [1-8] untuk detail command. Contoh: pt 8")
     return 1
 
 def detail_help(menu: str) -> int:  # tampilkan detail command pilihan user
     details = {
         "1": [
             "PT MINI",
-            "Hard minify + obfuscate file Python.",
+            "Pack + obfuscate file Python.",
             "Perintah:",
             "  pt mini file.py",
             "  pt mini file.py passphrase",
@@ -41,15 +46,19 @@ def detail_help(menu: str) -> int:  # tampilkan detail command pilihan user
             "  pt mini list.txt passphrase",
             "  pt mini folder/",
             "  pt mini folder/ passphrase",
+            "  pt mini folder/ passphrase",
             "Output:",
             "  file.py tetap file.py, tapi isinya obfuscated.",
             "  tanpa passphrase: source asli disimpan ke .pt_real/file.py.",
             "  dengan passphrase: tidak membuat .pt_real, recovery lewat pt demini.",
             "Catatan:",
+            "  Brutal obfuscation selalu ON, tapi dijamin aman.",
+            "  Auto smoke test: py_compile + import target.",
             "  Untuk banyak file, pisahkan dengan koma tanpa spasi.",
             "  Spasi setelah daftar file/folder dianggap passphrase.",
             "  Passphrase opsional untuk recovery lewat pt demini.",
-            "  Kalau sudah minified, user akan ditanya lanjut atau batal.",
+            "  Kalau ada PT_REV, source didecode dulu sebelum mini ulang.",
+            "  Kalau loader tidak punya source asli, proses batal.",
             "  .pt_real hanya dibuat untuk mini tanpa passphrase."
         ],
         "2": [
@@ -162,6 +171,22 @@ def detail_help(menu: str) -> int:  # tampilkan detail command pilihan user
             "  Jika user setuju, download zip, extract, replace.",
             "  Hapus zip/temp, lalu rerun aplikasi.",
         ],
+        "8": [
+            "PT SEAL",
+            "Suntik isi JSON ke file Python.",
+            "Pakai:",
+            "  pt seal file.json app.py",
+            "  pt seal folder/ app.py",
+            "Output:",
+            "  app.py berisi sealed data dari JSON.",
+            "  file/folder JSON asli tetap ada untuk edit utama.",
+            "  file/folder JSON otomatis ditambah ke .gitignore.",
+            "Catatan:",
+            "  Folder dibaca recursive untuk semua *.json.",
+            "  Existing open/read_text/exists/is_file tetap jalan.",
+            "  Kalau target obfuscated/minified, proses batal.",
+            "  Seal ini obfuscation, bukan enkripsi runtime.",
+        ],
     }
     lines = details[menu]
     print("+------------------------------------------------------------+")
@@ -234,10 +259,13 @@ def _python_files(folder_path: Path) -> list[Path]:  # ambil semua file .py di f
     return sorted(path for path in folder_path.rglob("*.py") if path.is_file())
 
 
-def _make_obfuscated_text(source: str, passphrase: str | None) -> str:  # bikin isi file obfuscated
-    minified = minify_source(source)
+def _make_obfuscated_text(
+    source: str,
+    passphrase: str | None,
+) -> str:  # bikin isi file obfuscated
+    packed_source = minify_source(source)
     reversible_payload = encrypt(source, passphrase) if passphrase else None
-    return make_loader(minified, reversible_payload)
+    return make_loader(packed_source, reversible_payload)
 
 
 def _write_text(path: Path, text: str) -> None:  # tulis file utf-8 lf
@@ -245,32 +273,108 @@ def _write_text(path: Path, text: str) -> None:  # tulis file utf-8 lf
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
-def _confirm_continue(question: str) -> bool:  # tanya lanjut untuk kondisi ambigu
-    answer = input(question).strip().lower()
-    return answer in {"y", "yes"}
+def _payload_from_text(text: str) -> str | None:  # ambil payload PT_REV dari teks
+    for line in text.splitlines():
+        if line.startswith(REV_MARKER):
+            return line.removeprefix(REV_MARKER).strip()
+    return None
 
 
-def _mini_file(source_path: Path, passphrase: str | None) -> Path:  # mini satu file, output tetap nama lama
+def _recover_source_for_mini(
+    source_path: Path,
+    current_source: str,
+    backup_path: Path,
+    passphrase: str | None,
+) -> str:  # jangan mini ulang loader
+    if not _looks_minified(current_source):
+        return current_source
+
+    payload = _payload_from_text(current_source)
+    if payload and passphrase:
+        try:
+            return decrypt(payload, passphrase)
+        except Exception:
+            if backup_path.exists():
+                print("warning: PT_REV gagal dibuka, pakai backup .pt_real")
+                return backup_path.read_text(encoding="utf-8-sig")
+            raise
+
+    if backup_path.exists():
+        print("warning: source asli diambil dari .pt_real")
+        return backup_path.read_text(encoding="utf-8-sig")
+    if payload:
+        raise ValueError("file punya PT_REV. pakai passphrase yang benar atau sediakan .pt_real")
+    raise ValueError("file sudah minified, source asli tidak ketemu. batal")
+
+
+def _mini_import_code() -> str:  # kode smoke import + cek Flask route
+    return r'''
+import importlib
+import inspect
+import sys
+
+module = importlib.import_module(sys.argv[1])
+app = getattr(module, "app", None) or getattr(module, "application", None)
+if app is not None and hasattr(app, "url_map") and hasattr(app, "view_functions"):
+    print(app.url_map)
+    for rule in app.url_map.iter_rules():
+        view = app.view_functions.get(rule.endpoint)
+        if view is None:
+            raise SystemExit(f"route endpoint tidak callable: {rule.endpoint}")
+        dummy = {name: "x" for name in getattr(rule, "arguments", set())}
+        try:
+            inspect.signature(view).bind_partial(**dummy)
+        except TypeError as error:
+            raise SystemExit(f"route bind gagal {rule}: {error}") from error
+'''
+
+
+def _smoke_test_mini(source_path: Path) -> None:  # py_compile + import target
+    py_compile.compile(str(source_path), doraise=True)
+    module_name = source_path.stem
+    if not module_name.isidentifier():
+        return
+
+    result = subprocess.run(
+        [sys.executable, "-c", _mini_import_code(), module_name],
+        cwd=source_path.parent,
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise ValueError(detail or "import target gagal")
+
+
+def _mini_file(
+    source_path: Path,
+    passphrase: str | None,
+) -> Path:  # mini satu file, output tetap nama lama
     if _is_in_real_store(source_path):
         raise ValueError("file di .pt_real tidak boleh diminify")
 
-    source = read_source(source_path)
+    current_source = read_source(source_path)
     backup_path = _real_store_path(source_path)
-    if _looks_minified(source):
-        if not _confirm_continue("warning: sudah berupa minified. tetap lanjutkan? y/n: "):
-            raise ValueError("dibatalkan")
-        if backup_path.exists():
-            source = backup_path.read_text(encoding="utf-8-sig")
-        else:
-            print("warning: backup .pt_real belum ada, backup akan memakai isi file sekarang")
+    source = _recover_source_for_mini(source_path, current_source, backup_path, passphrase)
 
     if not passphrase and not _looks_minified(source):
         _write_text(backup_path, source)
     _write_text(source_path, _make_obfuscated_text(source, passphrase))
+    try:
+        _smoke_test_mini(source_path)
+    except Exception as error:
+        _write_text(source_path, current_source)
+        raise ValueError(f"smoke test gagal, output dibatalkan: {error}") from error
     return source_path
 
 
-def _mini_folder(folder_path: Path, passphrase: str | None) -> tuple[list[Path], list[tuple[Path, Exception]]]:  # mini folder recursive
+def _mini_folder(
+    folder_path: Path,
+    passphrase: str | None,
+) -> tuple[list[Path], list[tuple[Path, Exception]]]:  # mini folder recursive
     if not folder_path.is_dir():
         raise FileNotFoundError(f"folder tidak ada: {folder_path}")
     if _is_in_real_store(folder_path):
@@ -326,11 +430,20 @@ def _run_batch(source_paths: list[Path], action) -> int:  # proses banyak file/f
 def mini_command(args: list[str]) -> int:  # handle command pt mini
     if len(args) < 2:
         return show_help()
-    if len(args) > 3:
+
+    positional = []
+    for item in args[1:]:
+        if item.startswith("--"):
+            print(f"warning: flag mini tidak dikenal: {item}")
+            return 1
+        positional.append(item)
+
+    if len(positional) not in {1, 2}:
         print("warning: pisahkan file dengan koma tanpa spasi. Spasi dianggap passphrase.")
         return 1
 
-    passphrase = args[2] if len(args) == 3 else None
+    input_arg = positional[0]
+    passphrase = positional[1] if len(positional) == 2 else None
     if passphrase and passphrase.lower().endswith(".py"):
         print("warning: pisahkan file dengan koma tanpa spasi. Spasi dianggap passphrase.")
         return 1
@@ -339,7 +452,7 @@ def mini_command(args: list[str]) -> int:  # handle command pt mini
         return 1
 
     try:
-        source_paths = _input_sources(Path.cwd(), args[1])
+        source_paths = _input_sources(Path.cwd(), input_arg)
     except ValueError as error:
         if "pisahkan file" in str(error):
             print("warning: pisahkan file dengan koma tanpa spasi. Spasi dianggap passphrase.")
@@ -356,9 +469,9 @@ def mini_command(args: list[str]) -> int:  # handle command pt mini
 
 def _reverse_payload(source_path: Path) -> str:  # ambil payload reverse dari file hasil mini passphrase
     text = read_source(source_path)
-    for line in text.splitlines():
-        if line.startswith(REV_MARKER):
-            return line.removeprefix(REV_MARKER).strip()
+    payload = _payload_from_text(text)
+    if payload:
+        return payload
     raise ValueError("file ini tidak punya payload reverse")
 
 
