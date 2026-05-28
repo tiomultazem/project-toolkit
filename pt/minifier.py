@@ -782,8 +782,10 @@ def make_loader(minified_source: str, reversible_payload: str | None) -> str:  #
     parts = _chunks(packed)
     table = [(index * 7 + 3, part) for index, part in enumerate(parts)]
     rev_line = f"{REV_MARKER}{reversible_payload}\n" if reversible_payload else ""
+    taunt_line = "# mo ngacak2 kodeku ya? selamat berpusing ria membacanya. cheers!\n"
     return (
-        rev_line
+        taunt_line
+        + rev_line
         + "import sys as _0\n"
         + "if getattr(_0,'gettrace')():raise SystemExit\n"
         + "_1=__import__;_2=_1('builtins');_3=_1('base64');_4=_1('zlib');_5=_1('marshal')\n"
