@@ -158,14 +158,72 @@ def stage_and_commit_one_if_needed(project_dir: Path, file_path: str, message: s
     run_git(project_dir, ["commit", "-m", message, "--", git_path])
 
 
+def is_project_toolkit(project_dir: Path) -> bool:  # cek apakah project ini toolkit sendiri
+    try:
+        toolkit_dir = Path(__file__).parent.parent.resolve()
+        return project_dir.resolve() == toolkit_dir
+    except Exception:
+        return False
+
+
+def _is_unobfuscated_py(file_path: Path) -> bool:  # cek apakah file python tidak terobfuscate
+    if not file_path.is_file():
+        return False
+    if file_path.suffix.lower() != ".py":
+        return False
+    parts = file_path.parts
+    if ".pt_real" in parts or "__pycache__" in parts:
+        return False
+    if any(p in {".venv", "venv", "env"} for p in parts):
+        return False
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return False
+    if not content.strip():
+        return False
+    rev_marker = "# PT_REV:"
+    looks_minified = rev_marker in content or ("gettrace" in content and "marshal" in content and "_k=" in content)
+    return not looks_minified
+
+
+def get_files_to_check(project_dir: Path) -> list[Path]:  # ambil file-file dari git status untuk dicek
+    files = []
+    try:
+        lines = status_lines(project_dir)
+    except Exception:
+        return []
+    for line in lines:
+        if len(line) < 4:
+            continue
+        if " -> " in line:
+            parts = line.split(" -> ")
+            path_str = parts[-1].strip().strip('"').strip("'")
+        else:
+            path_str = line[3:].strip().strip('"').strip("'")
+        files.append((project_dir / path_str).resolve())
+    return files
+
+
 def run_git_commit(
     project_dir: Path,
     message: str,
     remote_name: str = DEFAULT_REMOTE,
     branch: str = DEFAULT_BRANCH,
 ) -> bool:  # git add/commit kalau perlu, lalu push main
+    print("[DEBUG] Menjalankan run_git_commit dari Project Toolkit lokal")
     if not message.strip():
         raise ValueError("pesan commit kosong")
+
+    if not is_project_toolkit(project_dir):
+        has_unobfuscated = False
+        for file_path in get_files_to_check(project_dir):
+            if _is_unobfuscated_py(file_path):
+                has_unobfuscated = True
+                break
+        if has_unobfuscated:
+            if not ask_yes_no("anda akan push kode yang tidak terobfuscate. apakah anda yakin? (y/n): "):
+                return False
 
     if not remote_exists(project_dir, remote_name):
         added, remote_name, branch = add_remote_flow(project_dir)
@@ -186,10 +244,17 @@ def run_git_commit_one(
     remote_name: str = DEFAULT_REMOTE,
     branch: str = DEFAULT_BRANCH,
 ) -> bool:  # git add/commit satu file saja, lalu push main
+    print("[DEBUG] Menjalankan run_git_commit_one dari Project Toolkit lokal")
     if not file_path.strip():
         raise ValueError("file kosong")
     if not message.strip():
         raise ValueError("pesan commit kosong")
+
+    if not is_project_toolkit(project_dir):
+        resolved_file = (project_dir / file_path).resolve()
+        if _is_unobfuscated_py(resolved_file):
+            if not ask_yes_no("anda akan push kode yang tidak terobfuscate. apakah anda yakin? (y/n): "):
+                return False
 
     if not remote_exists(project_dir, remote_name):
         added, remote_name, branch = add_remote_flow(project_dir)
