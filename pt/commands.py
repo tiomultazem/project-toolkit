@@ -93,6 +93,11 @@ def detail_help(menu: str) -> int:  # tampilkan detail command pilihan user
             "  Passphrase bebas/custom, tapi tidak boleh pakai spasi.",
             "  File apa saja bisa: .env, .jpg, .png, .xlsx, dll.",
             "  Folder boleh ditulis static/ biar jelas.",
+            "  Tidak mendukung wildcard (seperti *).",
+            "  Gunakan titik (.) untuk mengenkripsi seluruh folder secara rekursif.",
+            "  Mendukung exclude dengan prefiks tanda seru (!).",
+            "  Contoh: !secret.json atau !venv/",
+            "  Jika hanya diisi exclude, otomatis default input adalah seluruh folder (.)",
         ],
         "4": [
             "PT DEKRIP",

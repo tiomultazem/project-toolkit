@@ -275,6 +275,10 @@ Catatan:
 - passphrase bebas/custom, tapi tidak boleh pakai spasi
 - file apa saja bisa: `.env`, `.jpg`, `.png`, `.xlsx`, dll
 - folder boleh ditulis `static/` biar jelas
+- tidak mendukung wildcard (seperti `*`)
+- gunakan titik (`.`) jika ingin mengenkripsi seluruh direktori/folder secara rekursif
+- mendukung pengecualian (exclude) dengan prefiks tanda seru `!` (misal: `!secret.json` atau `!venv/`)
+- jika seluruh daftar isi `list.txt` diisi exclude (tanpa menyertakan file include), secara default target enkripsi adalah seluruh direktori/folder saat ini (`.`)
 ### 4. Dekrip
 
 Dekripsi `extras.ptk` ke folder sekarang.

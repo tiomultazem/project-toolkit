@@ -38,6 +38,9 @@ def main() -> int:  # router command utama CLI
         if command in {"1", "2", "3", "4", "5", "6", "7", "8"}:
             return detail_help(command)
         return show_help()
+    except KeyboardInterrupt:
+        print("proses dihentikan oleh pengguna")
+        return 1
     except Exception as error:
         print(f"gagal: {error}")
         return 1
