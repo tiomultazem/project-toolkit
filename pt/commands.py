@@ -335,9 +335,20 @@ def _smoke_test_mini(source_path: Path) -> None:  # py_compile + import target
     if not module_name.isidentifier():
         return
 
+    # Check if the file is inside a package structure by looking for __init__.py files
+    cwd_path = source_path.parent
+    parts = [module_name]
+    current = source_path.parent
+    while current and current.parent and (current / "__init__.py").exists():
+        parts.insert(0, current.name)
+        cwd_path = current.parent
+        current = current.parent
+
+    full_module_name = ".".join(parts)
+
     result = subprocess.run(
-        [sys.executable, "-c", _mini_import_code(), module_name],
-        cwd=source_path.parent,
+        [sys.executable, "-c", _mini_import_code(), full_module_name],
+        cwd=cwd_path,
         text=True,
         capture_output=True,
         timeout=20,
