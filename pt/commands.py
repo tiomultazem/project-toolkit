@@ -1,3 +1,4 @@
+import os
 import py_compile
 import re
 import subprocess
@@ -351,12 +352,18 @@ def _smoke_test_mini(source_path: Path) -> None:  # py_compile + import target
 
     full_module_name = ".".join(parts)
 
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+
     result = subprocess.run(
         [sys.executable, "-c", _mini_import_code(), full_module_name],
         cwd=cwd_path,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=20,
+        env=env,
     )
     if result.stdout.strip():
         print(result.stdout.strip())
